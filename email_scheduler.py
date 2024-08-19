@@ -23,7 +23,7 @@ import uuid
 # MySQL connection details
 db_config = {
     'user': 'root',
-    'password': 'Shakil2831',
+    'password': 'password',
     'host': 'localhost',
     'database': 'email_processing_db'
 }
@@ -32,9 +32,11 @@ db_config = {
 attachment_folder = 'attachments/'
 stop_file = "stopfile.txt"
 
+# Define a maximum length for the body and body_sub content
+MAX_BODY_LENGTH = 65535  # For TEXT type, use a larger value for LONGTEXT
+
 # Function to perform OCR on an image
 def ocr_image(image):
-    print("Hello")
     try:
         return pytesseract.image_to_string(image)
     except Exception as e:
@@ -148,6 +150,7 @@ def read_attachment(file_path):
 
 # Function to extract email content and attachments
 def get_email_content(email_message):
+    subject = email_message['Subject'] or ""
     body = ""
     attachments = []
     for part in email_message.walk():
@@ -171,7 +174,7 @@ def get_email_content(email_message):
                     f.write(part.get_payload(decode=True))
                 attachment_content = read_attachment(attachment_path)
                 attachments.append((attachment_id, filename, attachment_path, attachment_content))
-    return body, attachments
+    return subject, body, attachments
 
 # Function to fetch emails
 def fetch_emails():
@@ -200,8 +203,8 @@ def fetch_emails():
         # Extract the email sender
         from_ = email_msg['From']
 
-        # Extract the email body and attachments
-        email_content, attachments = get_email_content(email_msg)
+        # Extract the email subject, body and attachments
+        subject, email_content, attachments = get_email_content(email_msg)
 
         # Initialize attachment list string
         attachment_list_str = ""
@@ -222,12 +225,20 @@ def fetch_emails():
         # Remove the trailing comma from the attachment list string
         attachment_list_str = attachment_list_str.rstrip(',')
 
-        # Combine body and attachment content
-        body_attach_content = email_content + "\n\n" + attach_content
+        # Combine subject and body content
+        body_sub_content = subject + "\n\n" + email_content
+
+        # Truncate the body if it exceeds the maximum length
+        if len(email_content) > MAX_BODY_LENGTH:
+            email_content = email_content[:MAX_BODY_LENGTH]
+
+        # Truncate the body_sub_content if it exceeds the maximum length
+        if len(body_sub_content) > MAX_BODY_LENGTH:
+            body_sub_content = body_sub_content[:MAX_BODY_LENGTH]
 
         # Add the email details to the MySQL table
-        sql = "INSERT INTO emails (id, sender_email, body, attachments, attach_content, body_attach, processed) VALUES (%s, %s, %s, %s, %s, %s, %s)"
-        val = (email_entry_id, from_, email_content, attachment_list_str, attach_content, body_attach_content, False)
+        sql = "INSERT INTO emails (id, sender_email, sub, body, attachments, attach_content, body_sub, processed) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        val = (email_entry_id, from_, subject, email_content, attachment_list_str, attach_content, body_sub_content, False)
         cursor.execute(sql, val)
 
     # Commit the transaction
