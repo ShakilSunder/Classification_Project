@@ -176,8 +176,8 @@ def get_email_content(email_message):
 # Function to fetch emails
 def fetch_emails():
     imap_host = 'imap.gmail.com'
-    imap_user = 'shakilsunder@gmail.com'
-    imap_pass = 'wjgp lxtv piay pzam'
+    imap_user = 'mail_id'
+    imap_pass = 'app_password'
 
     mail = imaplib.IMAP4_SSL(imap_host)
     mail.login(imap_user, imap_pass)
